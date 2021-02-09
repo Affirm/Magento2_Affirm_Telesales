@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" layout="1column" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <referenceContainer name="main">
+        <container name="page.messages" htmlTag="div" htmlClass="page messages">
+            <block class="Magento\Framework\View\Element\Template" name="ajax.message.placeholder" template="Magento_Theme::html/messages.phtml"/>
+            <block class="Magento\Framework\View\Element\Messages" name="messages" as="messages" template="Magento_Theme::messages.phtml"/>
+        </container>
+    </referenceContainer>
+    <referenceContainer name="content">
+        <block class="Affirm\Telesales\Block\Payment\Cancel" name="telesales_payment_cancel" template="Affirm_Telesales::cancel.phtml" />
+    </referenceContainer>
+</page>

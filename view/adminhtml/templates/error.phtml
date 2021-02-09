@@ -1,0 +1,14 @@
+<?php
+/**
+ * Telesales affirm
+ *
+ * @var $block Affirm\Telesales\Block\Adminhtml\Error
+ */
+?>
+<h2>
+    <?php echo __(
+        "Affirm Telesales is not enabled as a payment method at this time.
+     To enable Affirm Telesales, please refer to %1", "<a href =" . $block->getTelesalesDocUrl() . ">Affirm Telesales Document</a>."
+    );
+    ?>
+</h2>
