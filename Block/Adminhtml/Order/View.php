@@ -3,6 +3,10 @@ namespace Affirm\Telesales\Block\Adminhtml\Order;
 
 use Affirm\Telesales\Model\Adminhtml\Checkout;
 
+/**
+ * Class View
+ * @package Affirm\Telesales\Block\Adminhtml\Order
+ */
 class View extends \Magento\Backend\Block\Template
 {
     /**#@+
@@ -43,6 +47,12 @@ class View extends \Magento\Backend\Block\Template
         $this->_logger = $context->getLogger();
     }
 
+    /**
+     * Send Checkout Button
+     *
+     * @return string
+     *
+     **/
     public function getSendCheckoutButtonHtml()
     {
         // Send or Resend

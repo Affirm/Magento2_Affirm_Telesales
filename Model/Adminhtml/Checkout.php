@@ -62,12 +62,20 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
         parent::__construct($context, $coreRegistry);
     }
 
+    /**
+     * @param $data
+     * @return string
+     */
     public function sendCheckout($data)
     {
         $send_checkout_url = $this->getApiUrl(self::API_STORE_CHECKOUT_PATH);
         return $this->_apiRequestClient($send_checkout_url, $data);
     }
 
+    /**
+     * @param $checkout_id
+     * @return string
+     */
     public function resendCheckout($checkout_id)
     {
         $resend_checkout_url = $this->getApiUrl(self::API_STORE_RESEND_PATH);
@@ -75,18 +83,32 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
         return $this->_apiRequestClient($resend_checkout_url, $data, true);
     }
 
+    /**
+     * @param $checkout_id
+     * @return string
+     */
     public function readCheckout($checkout_id)
     {
         $read_checkout_url = $this->getApiUrl(self::API_STORE_READ_PATH);
         return $this->_apiRequestClient($read_checkout_url . $checkout_id, null, true, self::METHOD_GET);
     }
 
+    /**
+     * @param $charge_id
+     * @return string
+     */
     public function readCharge($charge_id)
     {
         $read_charge_url = $this->getApiUrl(self::API_CHARGES_PATH);
         return $this->_apiRequestClient($read_charge_url . $charge_id, null, true, self::METHOD_GET);
     }
 
+    /**
+     * Generates checkout object with cart info
+     *
+     * @param $order
+     * @return array|false
+     */
     public function getCheckoutObject($order)
     {
         if (!$this->isAffirmPaymentMethod($order)) {

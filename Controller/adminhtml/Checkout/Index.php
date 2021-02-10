@@ -68,7 +68,7 @@ class Index extends Action implements HttpPostActionInterface
     }
 
     /**
-     * Collect relations data
+     * Handles ajax request from send checkout button
      *
      * @return \Magento\Framework\Controller\Result\Json
      */
