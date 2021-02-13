@@ -3,7 +3,6 @@
 namespace Affirm\Telesales\Controller\Adminhtml\Checkout;
 
 use Magento\Backend\App\Action;
-use Magento\Framework\App\Action\HttpPostActionInterface;
 use Magento\Backend\App\Action\Context;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Framework\Registry;
@@ -17,7 +16,7 @@ use Astound\Affirm\Model\Config as ConfigAffirm;
 use Astound\Affirm\Model\Ui\ConfigProvider;
 use Affirm\Telesales\Model\Adminhtml\Checkout;
 
-class Index extends Action implements HttpPostActionInterface
+class Index extends Action
 {
     /**#@+
      * Define constants

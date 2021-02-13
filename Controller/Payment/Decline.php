@@ -6,8 +6,6 @@ use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\CsrfAwareActionInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\App\Request\InvalidRequestException;
-use Magento\Framework\App\Action\HttpPostActionInterface;
-use Magento\Framework\Exception\LocalizedException;
 use Magento\Checkout\Model\Session;
 use Magento\Quote\Api\CartManagementInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
