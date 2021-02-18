@@ -9,7 +9,7 @@ namespace Affirm\Telesales\Block\Payment;
 class Cancel extends \Magento\Framework\View\Element\Template
 {
     public function __construct(
-        \Magento\Backend\Block\Template\Context $context
+        \Magento\Framework\View\Element\Template\Context $context
     ) {
         parent::__construct($context);
     }
