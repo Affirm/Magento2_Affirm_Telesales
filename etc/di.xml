@@ -1,18 +1,4 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../lib/internal/Magento/Framework/ObjectManager/etc/config.xsd">
-    <virtualType name="Affirm\Telesales\Model\ResourceModel\Post\Grid\Collection" type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
-        <arguments>
-            <argument name="mainTable" xsi:type="string">affrim_telesales_post</argument>
-            <argument name="resourceModel" xsi:type="string">Affirm\Telesales\Model\ResourceModel\Post</argument>
-        </arguments>
-    </virtualType>
-    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
-        <arguments>
-            <argument name="collections" xsi:type="array">
-                <item name="affirm_telesales_post_listing_data_source" xsi:type="string">Affirm\Telesales\Model\ResourceModel\Post\Grid\Collection</item>
-            </argument>
-        </arguments>
-    </type>
-
     <!-- Added plugin to the edit and save new order controller in admin  -->
     <type name="Magento\Sales\Controller\Adminhtml\Order\Create\Save">
         <plugin name="after-save-admin" type="Affirm\Telesales\Model\Plugin\Order\Create" sortOrder="1"/>
