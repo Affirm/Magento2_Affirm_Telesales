@@ -101,13 +101,6 @@ class Confirm extends Action implements CsrfAwareActionInterface
             $order = $this->orderManagement->place($_order);
             $quote->setIsActive(false);
             $this->quoteRepository->save($quote);
-            $this->_eventManager->dispatch(
-                'sales_model_service_quote_submit_success',
-                [
-                    'order' => $order,
-                    'quote' => $quote
-                ]
-            );
         } catch (LocalizedException $e) {
             $this->messageManager->addExceptionMessage(
                 $e,
