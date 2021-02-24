@@ -64,6 +64,7 @@ class View extends \Magento\Backend\Block\Template
         )->setData(
             [
                 'id' => 'send_checkout_button',
+                'class' => 'action-secondary',
                 'label' => __($label),
                 'display' => false
             ]
