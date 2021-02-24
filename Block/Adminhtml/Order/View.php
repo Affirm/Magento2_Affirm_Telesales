@@ -209,11 +209,6 @@ class View extends \Magento\Backend\Block\Template
                     $result['checkout_status']  = "Payment authorized";
                     $result['checkout_status_message'] = "Payment is complete. Ready to finalize order";
                     break;
-                case self::STATUS_NOT_APPROVED:
-                    $result['checkout_status'] = "Not approved";
-                    $result['checkout_status_message'] = "Not approved";
-                    $this->cancelOrderWithComment($result['checkout_status_message']);
-                    break;
                 case self::STATUS_MORE_INFORMATION_NEEDED:
                     $result['checkout_status']  = "Pending loan approval";
                     $result['checkout_status_message'] = "Waiting for loan approval";
@@ -223,6 +218,7 @@ class View extends \Magento\Backend\Block\Template
                     $result['checkout_status_message'] = "Waiting for customer to start the application";
                     $result['checkout_action'] = true;
                     break;
+                case self::STATUS_NOT_APPROVED:
                 case self::STATUS_VOIDED:
                     $result['checkout_status']  = "Checkout voided";
                     $result['checkout_status_message'] = "Checkout token has been voided";
