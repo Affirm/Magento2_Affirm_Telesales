@@ -124,7 +124,8 @@ class View extends \Magento\Backend\Block\Template
      */
     public function getPaymentCheckoutToken()
     {
-        return $this->getOrder()->getPayment()->getAdditionalInformation('checkout_token');
+        $order = $this->getOrder() ?: null;
+        return $order ? $order->getPayment()->getAdditionalInformation('checkout_token') : null;
     }
 
     /**
@@ -134,7 +135,8 @@ class View extends \Magento\Backend\Block\Template
      */
     public function getChargeId()
     {
-        return $this->getOrder()->getPayment()->getAdditionalInformation('charge_id');
+        $order = $this->getOrder() ?: null;
+        return $order ? $order->getPayment()->getAdditionalInformation('charge_id') : null;
     }
 
     /**
@@ -146,6 +148,10 @@ class View extends \Magento\Backend\Block\Template
     {
         // Check order state and return null to skip Telesales template rendering
         $order = $this->getOrder();
+        if (!$order) {
+            return null;
+        }
+
         switch ($order->getState()) {
             case \Magento\Sales\Model\Order::STATE_CANCELED:
             case \Magento\Sales\Model\Order::STATE_CLOSED:

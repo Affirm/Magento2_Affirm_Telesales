@@ -18,15 +18,6 @@ use Affirm\Telesales\Model\Adminhtml\Checkout;
 
 class Index extends Action
 {
-    /**#@+
-     * Define constants
-     */
-    const API_STORE_CHECKOUT_PATH = '/api/v2/checkout/store';
-    const API_STORE_RESEND_PATH = '/api/v2/checkout/resend';
-    const CONFIRMATION_URL_ACTION = 'POST';
-    const CHECKOUT_FLOW_TYPE = 'In-Store';
-    const PLATFORM_TYPE_APPEND = ' 2';
-
     /**
      * @var JsonFactory
      */
@@ -139,6 +130,15 @@ class Index extends Action
         if (!$checkout_token && $order->getState() === \Magento\Sales\Model\Order::STATE_NEW) {
             // Generate checkout object
             $data = $this->affirmCheckout->getCheckoutObject($order);
+            if (!$data) {
+                return $result->setData([
+                    'success' => false,
+                    'message' => 'Checkout data unavailable',
+                    'checkout_status' => "Error",
+                    'checkout_status_message' => "Checkout data unavailable",
+                    'checkout_action' => true
+                ]);
+            }
             try {
                 $sendCheckoutResponse = $this->affirmCheckout->sendCheckout($data);
                 $responseStatus = $sendCheckoutResponse->getStatus();
