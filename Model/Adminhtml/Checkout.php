@@ -22,11 +22,11 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
     /**#@+
      * Define constants
      */
-    const API_STORE_CHECKOUT_PATH = '/api/v2/checkout/store';
-    const API_STORE_RESEND_PATH = '/api/v2/checkout/resend';
-    const API_STORE_READ_PATH = '/api/v2/checkout/';
+    const API_CHECKOUT_TELESALES_PATH = '/api/v2/checkout/telesales';
+    const API_CHECKOUT_RESEND_PATH = '/api/v2/checkout/resend';
+    const API_CHECKOUT_READ_PATH = '/api/v2/checkout/';
     const API_CHARGES_PATH = '/api/v2/charges/';
-    const CHECKOUT_FLOW_TYPE = 'In-Store';
+    const CHECKOUT_MODE = 'telesales';
     const PLATFORM_TYPE_APPEND = ' 2';
     const METHOD_GET = 'GET';
     const METHOD_POST = 'POST';
@@ -68,7 +68,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
      */
     public function sendCheckout($data)
     {
-        $send_checkout_url = $this->getApiUrl(self::API_STORE_CHECKOUT_PATH);
+        $send_checkout_url = $this->getApiUrl(self::API_CHECKOUT_TELESALES_PATH);
         return $this->_apiRequestClient($send_checkout_url, $data);
     }
 
@@ -78,7 +78,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
      */
     public function resendCheckout($checkout_id)
     {
-        $resend_checkout_url = $this->getApiUrl(self::API_STORE_RESEND_PATH);
+        $resend_checkout_url = $this->getApiUrl(self::API_CHECKOUT_RESEND_PATH);
         $data = ['checkout_id' => $checkout_id];
         return $this->_apiRequestClient($resend_checkout_url, $data, true);
     }
@@ -89,7 +89,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
      */
     public function readCheckout($checkout_id)
     {
-        $read_checkout_url = $this->getApiUrl(self::API_STORE_READ_PATH);
+        $read_checkout_url = $this->getApiUrl(self::API_CHECKOUT_READ_PATH);
         return $this->_apiRequestClient($read_checkout_url . $checkout_id, null, true, self::METHOD_GET);
     }
 
@@ -112,72 +112,77 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
     public function getCheckoutObject($order)
     {
         if (!$this->isAffirmPaymentMethod($order)) {
-            return false; // TODO: Exception handling
+            return false;
         }
 
-        $shippingAddress = $order->getShippingAddress();
-        $shippingObject = [
-            'name' => [
-                'full_name' => $shippingAddress->getName(),
-                'first' => $shippingAddress->getFirstname(),
-                'last' => $shippingAddress->getLastname()
-            ],
-            'address'=>[
-                'line1' => $shippingAddress->getStreetLine(1),
-                'line2' => empty($shippingAddress->getStreetLine(2)) ? null : $shippingAddress->getStreetLine(2),
-                'city' => $shippingAddress->getCity(),
-                'state' => empty($shippingAddress->getRegionCode()) ? $this->getRegionCode($shippingAddress->getRegionId()) : $shippingAddress->getRegionCode(),
-                'zipcode' => $shippingAddress->getPostcode(),
-                'country' => $shippingAddress->getCountryId()
-            ],
-            'email' => $shippingAddress->getEmail(),
-            'phone_number' => $shippingAddress->getTelephone()
-        ];
+        try {
+            $shippingAddress = $order->getShippingAddress();
+            $shippingObject = [
+                'name' => [
+                    'full_name' => $shippingAddress->getName(),
+                    'first' => $shippingAddress->getFirstname(),
+                    'last' => $shippingAddress->getLastname()
+                ],
+                'address'=>[
+                    'line1' => $shippingAddress->getStreetLine(1),
+                    'line2' => empty($shippingAddress->getStreetLine(2)) ? null : $shippingAddress->getStreetLine(2),
+                    'city' => $shippingAddress->getCity(),
+                    'state' => empty($shippingAddress->getRegionCode()) ? $this->getRegionCode($shippingAddress->getRegionId()) : $shippingAddress->getRegionCode(),
+                    'zipcode' => $shippingAddress->getPostcode(),
+                    'country' => $shippingAddress->getCountryId()
+                ],
+                'email' => $shippingAddress->getEmail(),
+                'phone_number' => $shippingAddress->getTelephone()
+            ];
 
-        $billingAddress = $order->getBillingAddress();
-        $billingObject = [
-            'name' => [
-                'full_name' => $billingAddress->getName(),
-                'first' => $billingAddress->getFirstname(),
-                'last' => $billingAddress->getLastname()
-            ],
-            'address'=>[
-                'line1' => $billingAddress->getStreetLine(1),
-                'line2' => empty($billingAddress->getStreetLine(2)) ? null : $billingAddress->getStreetLine(2),
-                'city' => $billingAddress->getCity(),
-                'state' => empty($billingAddress->getRegionCode()) ? $this->getRegionCode($billingAddress->getRegionId()) : $billingAddress->getRegionCode(),
-                'zipcode' => $billingAddress->getPostcode(),
-                'country' => $billingAddress->getCountryId()
-            ],
-            'email' => $billingAddress->getEmail(),
-            'phone_number' => $billingAddress->getTelephone()
-        ];
+            $billingAddress = $order->getBillingAddress();
+            $billingObject = [
+                'name' => [
+                    'full_name' => $billingAddress->getName(),
+                    'first' => $billingAddress->getFirstname(),
+                    'last' => $billingAddress->getLastname()
+                ],
+                'address'=>[
+                    'line1' => $billingAddress->getStreetLine(1),
+                    'line2' => empty($billingAddress->getStreetLine(2)) ? null : $billingAddress->getStreetLine(2),
+                    'city' => $billingAddress->getCity(),
+                    'state' => empty($billingAddress->getRegionCode()) ? $this->getRegionCode($billingAddress->getRegionId()) : $billingAddress->getRegionCode(),
+                    'zipcode' => $billingAddress->getPostcode(),
+                    'country' => $billingAddress->getCountryId()
+                ],
+                'email' => $billingAddress->getEmail(),
+                'phone_number' => $billingAddress->getTelephone()
+            ];
 
-        // Prepare Affirm Checkout Data
-        $shippingAmount = $order->getShippingAmount();
-        $taxAmount = $order->getTaxAmount();
-        $total = $order->getGrandTotal();
-        $data = [
-            'shipping' => $shippingObject,
-            'billing' => $billingObject,
-            'merchant' => [
-                'user_confirmation_url' => $this->urlHelper->getUrl('telesales/payment/confirm'),
-                'user_cancel_url' => $this->urlHelper->getUrl('telesales/payment/cancel'),
-                'user_decline_url' => $this->urlHelper->getUrl('telesales/payment/decline'),
-                'user_confirmation_url_action' => self::METHOD_POST,
-                'public_api_key' => $this->getPublicApiKey()
-            ],
-            'metadata' => [
-                'platform_type' => $this->productMetadata->getName() . self::PLATFORM_TYPE_APPEND,
-                'platform_version' => $this->productMetadata->getVersion() . ' ' . $this->productMetadata->getEdition(),
-                'platform_affirm' => $this->moduleResource->getDbVersion('Astound_Affirm'),
-                'mode' => self::CHECKOUT_FLOW_TYPE
-            ],
-            'order_id' => $order->getIncrementId(),
-            'shipping_amount' => Util::formatToCents($shippingAmount),
-            'tax_amount'=> Util::formatToCents($taxAmount),
-            'total'=> Util::formatToCents($total)
-        ];
+            // Prepare Affirm Checkout Data
+            $shippingAmount = $order->getShippingAmount();
+            $taxAmount = $order->getTaxAmount();
+            $total = $order->getGrandTotal();
+            $data = [
+                'shipping' => $shippingObject,
+                'billing' => $billingObject,
+                'merchant' => [
+                    'user_confirmation_url' => $this->urlHelper->getUrl('telesales/payment/confirm'),
+                    'user_cancel_url' => $this->urlHelper->getUrl('telesales/payment/cancel'),
+                    'user_decline_url' => $this->urlHelper->getUrl('telesales/payment/decline'),
+                    'user_confirmation_url_action' => self::METHOD_POST,
+                    'public_api_key' => $this->getPublicApiKey()
+                ],
+                'metadata' => [
+                    'platform_type' => $this->productMetadata->getName() . self::PLATFORM_TYPE_APPEND,
+                    'platform_version' => $this->productMetadata->getVersion() . ' ' . $this->productMetadata->getEdition(),
+                    'platform_affirm' => 'affirm_telesales_'.$this->moduleResource->getDbVersion('Affirm_Telesales'),
+                    'mode' => self::CHECKOUT_MODE
+                ],
+                'order_id' => $order->getIncrementId(),
+                'shipping_amount' => Util::formatToCents($shippingAmount),
+                'tax_amount'=> Util::formatToCents($taxAmount),
+                'total'=> Util::formatToCents($total)
+            ];
+        } catch (\Exception $e) {
+            $this->_logger->debug($e->getMessage());
+            return false;
+        }
 
         return $data;
     }
