@@ -3,9 +3,6 @@ namespace Affirm\Telesales\Controller\Payment;
 
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
-use Magento\Framework\App\CsrfAwareActionInterface;
-use Magento\Framework\App\RequestInterface;
-use Magento\Framework\App\Request\InvalidRequestException;
 use Magento\Checkout\Model\Session;
 use Magento\Quote\Api\CartManagementInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
@@ -13,7 +10,7 @@ use Magento\Sales\Model\OrderFactory;
 use Magento\Sales\Api\OrderManagementInterface as OrderManagement;
 use Affirm\Telesales\Model\Adminhtml\Checkout as AffirmCheckout;
 
-class Decline extends Action implements CsrfAwareActionInterface
+class Decline extends Action
 {
     const CHECKOUT_STATUS_NOT_APPROVED = 'not_approved';
     /**
@@ -41,24 +38,7 @@ class Decline extends Action implements CsrfAwareActionInterface
         $this->logger = $logger;
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function createCsrfValidationException(
-        RequestInterface $request
-    ): ?InvalidRequestException {
-        return null;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function validateForCsrf(RequestInterface $request): ?bool
-    {
-        return true;
-    }
-
-    /**
+     /**
      * @inheritDoc
      */
     public function execute()
