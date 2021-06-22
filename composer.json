@@ -1,5 +1,5 @@
 {
-    "name": "affirm/magento2-telesales",
+    "name": "affirm/m2-telesales",
     "description": "Affirm Telesales extension for the Magento 2 https://www.affirm.com/",
     "type": "magento2-module",
     "version": "1.0.4",
