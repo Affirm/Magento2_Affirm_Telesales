@@ -250,4 +250,3 @@ class Index extends Action
         return $_token;
     }
 }
-?>
