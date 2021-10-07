@@ -3,6 +3,9 @@ namespace Affirm\Telesales\Controller\Payment;
 
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
+use Magento\Framework\App\CsrfAwareActionInterface;
+use Magento\Framework\App\RequestInterface;
+use Magento\Framework\App\Request\InvalidRequestException;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Checkout\Model\Session;
 use Magento\Quote\Api\CartManagementInterface;
@@ -11,7 +14,7 @@ use Magento\Sales\Model\OrderFactory;
 use Magento\Sales\Api\OrderManagementInterface as OrderManagement;
 use Affirm\Telesales\Model\Adminhtml\Checkout as AffirmCheckout;
 
-class Confirm extends Action
+class Confirm extends Action implements CsrfAwareActionInterface
 {
     const CHECKOUT_STATUS_CONFIRMED = 'confirmed';
     /**
@@ -39,6 +42,23 @@ class Confirm extends Action
         $this->logger = $logger;
     }
 
+    /**
+     * @inheritDoc
+     */
+    public function createCsrfValidationException(
+        RequestInterface $request
+    ): ?InvalidRequestException {
+        return null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function validateForCsrf(RequestInterface $request): ?bool
+    {
+        return true;
+    }
+    
      /**
      * @inheritDoc
      */
