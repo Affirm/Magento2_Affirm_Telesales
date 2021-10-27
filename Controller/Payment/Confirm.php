@@ -106,8 +106,6 @@ class Confirm extends Action implements CsrfAwareActionInterface
                 $e,
                 $e->getMessage()
             );
-            $_order->setState(\Magento\Sales\Model\Order::STATE_CANCELED)
-                ->setStatus(\Magento\Sales\Model\Order::STATE_CANCELED);
             $_order->addCommentToStatusHistory($e->getMessage());
             $_order->save();
 
