@@ -21,6 +21,9 @@ class View extends \Magento\Backend\Block\Template
     const STATUS_MORE_INFORMATION_NEEDED = 'more_information_needed';
     const STATUS_UNKNOWN = 'unknown';
     const STATUS_VOIDED = 'voided';
+    const ORDER_ID = 'order_id';
+    const CHECKOUT_TOKEN = 'checkout_token';
+    const TRANSACTION_ID = 'transaction_id';
 
     /**
      * Core registry
@@ -91,7 +94,7 @@ class View extends \Magento\Backend\Block\Template
      */
     public function getAjaxUrl()
     {
-        return $this->getUrl(self::TELESALES_CHECKOUT_ENDPOINT, ['order_id' => $this->getOrder()->getId()]);
+        return $this->getUrl(self::TELESALES_CHECKOUT_ENDPOINT, [self::ORDER_ID => $this->getOrder()->getId()]);
     }
 
     /**
@@ -125,7 +128,7 @@ class View extends \Magento\Backend\Block\Template
     public function getPaymentCheckoutToken()
     {
         $order = $this->getOrder() ?: null;
-        return $order ? $order->getPayment()->getAdditionalInformation('checkout_token') : null;
+        return $order ? $order->getPayment()->getAdditionalInformation(self::CHECKOUT_TOKEN) : null;
     }
 
     /**
@@ -136,7 +139,7 @@ class View extends \Magento\Backend\Block\Template
     public function getChargeId()
     {
         $order = $this->getOrder() ?: null;
-        return $order ? $order->getPayment()->getAdditionalInformation('charge_id') : null;
+        return $order ? $order->getPayment()->getAdditionalInformation(self::TRANSACTION_ID) : null;
     }
 
     /**
@@ -177,9 +180,9 @@ class View extends \Magento\Backend\Block\Template
         $checkout_status = $responseBody['checkout_status'] ?: null;
 
         // Read charge endpoint if charge id exists
-        $charge_id = $this->getChargeId();
-        if ($charge_id) {
-            $readChargeResponse = $this->affirmCheckout->readCharge($charge_id);
+        $transaction_id = $this->getChargeId();
+        if ($transaction_id) {
+            $readChargeResponse = $this->affirmCheckout->readCharge($transaction_id);
             $responseBody = $readChargeResponse ? json_decode($readChargeResponse->getBody(), true) : null;
             $charge_status = $responseBody ? $responseBody['status'] : null;
             if ($charge_status === self::STATUS_AUTHORIZED) {
