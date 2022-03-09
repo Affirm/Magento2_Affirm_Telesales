@@ -132,11 +132,11 @@ class View extends \Magento\Backend\Block\Template
     }
 
     /**
-     * Get checkout token
+     * Get transaction id
      *
      * @return string
      */
-    public function getChargeId()
+    public function getTransactionId()
     {
         $order = $this->getOrder() ?: null;
         return $order ? $order->getPayment()->getAdditionalInformation(self::TRANSACTION_ID) : null;
@@ -179,15 +179,15 @@ class View extends \Magento\Backend\Block\Template
         $responseBody = json_decode($readCheckoutResponse->getBody(), true);
         $checkout_status = $responseBody['checkout_status'] ?: null;
 
-        // Read charge endpoint if charge id exists
-        $transaction_id = $this->getChargeId();
+        // Read transaction endpoint if transaction id exists
+        $transaction_id = $this->getTransactionId();
         if ($transaction_id) {
-            $readChargeResponse = $this->affirmCheckout->readCharge($transaction_id);
-            $responseBody = $readChargeResponse ? json_decode($readChargeResponse->getBody(), true) : null;
-            $charge_status = $responseBody ? $responseBody['status'] : null;
-            if ($charge_status === self::STATUS_AUTHORIZED) {
-                $checkout_status = $charge_status;
-            } else if ($charge_status && $charge_status !== self::STATUS_AUTHORIZED) {
+            $readTransactionResponse = $this->affirmCheckout->readTransaction($transaction_id);
+            $responseBody = $readTransactionResponse ? json_decode($readTransactionResponse->getBody(), true) : null;
+            $transaction_status = $responseBody ? $responseBody['status'] : null;
+            if ($transaction_status === self::STATUS_AUTHORIZED) {
+                $checkout_status = $transaction_status;
+            } else if ($transaction_status && $transaction_status !== self::STATUS_AUTHORIZED) {
                 // return null if there is no further action for checkout status update
                 return null;
             }

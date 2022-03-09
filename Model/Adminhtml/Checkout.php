@@ -25,7 +25,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
     const API_CHECKOUT_TELESALES_PATH = '/api/v2/checkout/telesales';
     const API_CHECKOUT_RESEND_PATH = '/api/v2/checkout/resend';
     const API_CHECKOUT_READ_PATH = '/api/v2/checkout/';
-    const API_CHARGES_PATH = '/api/v1/transactions/';
+    const API_TRANSACTIONS_PATH = '/api/v1/transactions/';
     const CHECKOUT_MODE = 'telesales';
     const PLATFORM_TYPE_APPEND = ' 2';
     const METHOD_GET = 'GET';
@@ -97,9 +97,9 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
      * @param $transaction_id
      * @return string
      */
-    public function readCharge($transaction_id)
+    public function readTransaction($transaction_id)
     {
-        $read_charge_url = $this->getApiUrl(self::API_CHARGES_PATH);
+        $read_charge_url = $this->getApiUrl(self::API_TRANSACTIONS_PATH);
         return $this->_apiRequestClient($read_charge_url . $transaction_id, null, true, self::METHOD_GET);
     }
 
