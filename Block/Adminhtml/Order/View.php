@@ -21,6 +21,9 @@ class View extends \Magento\Backend\Block\Template
     const STATUS_MORE_INFORMATION_NEEDED = 'more_information_needed';
     const STATUS_UNKNOWN = 'unknown';
     const STATUS_VOIDED = 'voided';
+    const ORDER_ID = 'order_id';
+    const CHECKOUT_TOKEN = 'checkout_token';
+    const TRANSACTION_ID = 'transaction_id';
 
     /**
      * Core registry
@@ -91,7 +94,7 @@ class View extends \Magento\Backend\Block\Template
      */
     public function getAjaxUrl()
     {
-        return $this->getUrl(self::TELESALES_CHECKOUT_ENDPOINT, ['order_id' => $this->getOrder()->getId()]);
+        return $this->getUrl(self::TELESALES_CHECKOUT_ENDPOINT, [self::ORDER_ID => $this->getOrder()->getId()]);
     }
 
     /**
@@ -125,18 +128,18 @@ class View extends \Magento\Backend\Block\Template
     public function getPaymentCheckoutToken()
     {
         $order = $this->getOrder() ?: null;
-        return $order ? $order->getPayment()->getAdditionalInformation('checkout_token') : null;
+        return $order ? $order->getPayment()->getAdditionalInformation(self::CHECKOUT_TOKEN) : null;
     }
 
     /**
-     * Get checkout token
+     * Get transaction id
      *
      * @return string
      */
-    public function getChargeId()
+    public function getTransactionId()
     {
         $order = $this->getOrder() ?: null;
-        return $order ? $order->getPayment()->getAdditionalInformation('charge_id') : null;
+        return $order ? $order->getPayment()->getAdditionalInformation(self::TRANSACTION_ID) : null;
     }
 
     /**
@@ -176,15 +179,15 @@ class View extends \Magento\Backend\Block\Template
         $responseBody = json_decode($readCheckoutResponse->getBody(), true);
         $checkout_status = $responseBody['checkout_status'] ?: null;
 
-        // Read charge endpoint if charge id exists
-        $charge_id = $this->getChargeId();
-        if ($charge_id) {
-            $readChargeResponse = $this->affirmCheckout->readCharge($charge_id);
-            $responseBody = $readChargeResponse ? json_decode($readChargeResponse->getBody(), true) : null;
-            $charge_status = $responseBody ? $responseBody['status'] : null;
-            if ($charge_status === self::STATUS_AUTHORIZED) {
-                $checkout_status = $charge_status;
-            } else if ($charge_status && $charge_status !== self::STATUS_AUTHORIZED) {
+        // Read transaction endpoint if transaction id exists
+        $transaction_id = $this->getTransactionId();
+        if ($transaction_id) {
+            $readTransactionResponse = $this->affirmCheckout->readTransaction($transaction_id);
+            $responseBody = $readTransactionResponse ? json_decode($readTransactionResponse->getBody(), true) : null;
+            $transaction_status = $responseBody ? $responseBody['status'] : null;
+            if ($transaction_status === self::STATUS_AUTHORIZED) {
+                $checkout_status = $transaction_status;
+            } else if ($transaction_status && $transaction_status !== self::STATUS_AUTHORIZED) {
                 // return null if there is no further action for checkout status update
                 return null;
             }
