@@ -15,6 +15,7 @@ use Magento\Framework\Registry;
 use Magento\Framework\Url as Url;
 use Magento\Sales\Api\Data\OrderStatusHistoryInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
+use Magento\Catalog\Model\ProductRepository;
 use Affirm\Telesales\Model\Config as ConfigAffirmTelesales;
 
 class Checkout extends \Magento\Framework\Model\AbstractModel
@@ -40,6 +41,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
         JsonFactory $resultJsonFactory,
         OrderRepositoryInterface $orderRepository,
         OrderStatusHistoryInterface $orderStatusRepository,
+        ProductRepository $productRepository,
         ProductMetadataInterface $productMetadata,
         ResourceInterface $moduleResource,
         ScopeConfigInterface $scopeConfig,
@@ -52,6 +54,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
         $this->resultJsonFactory = $resultJsonFactory;
         $this->orderRepository = $orderRepository;
         $this->orderStatusRepository = $orderStatusRepository;
+        $this->productRepository = $productRepository;
         $this->productMetadata = $productMetadata;
         $this->moduleResource = $moduleResource;
         $this->scopeConfig = $scopeConfig;
@@ -154,6 +157,19 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
                 'phone_number' => $billingAddress->getTelephone()
             ];
 
+            $_items = [];
+            foreach ($order->getAllItems() as $item) {
+                $product = $this->productRepository->getById($item->getProductId());
+                $_items[] = [
+                    'display_name' => $item['name'],
+                    'sku' => $item['sku'],
+                    'unit_price' => intval($item['price'] * 100),
+                    'qty' => intval($item->getQtyOrdered()),
+                    'item_url' => $product->getProductUrl(),
+                    'item_image_url' => $product->getThumbnail(),
+                ];
+            }
+
             // Prepare Affirm Checkout Data
             $shippingAmount = $order->getShippingAmount();
             $taxAmount = $order->getTaxAmount();
@@ -174,6 +190,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
                     'platform_affirm' => 'affirm_telesales_'.$this->moduleResource->getDbVersion('Affirm_Telesales'),
                     'mode' => self::CHECKOUT_MODE
                 ],
+                'items' => $_items,
                 'order_id' => $order->getIncrementId(),
                 'shipping_amount' => Util::formatToCents($shippingAmount),
                 'tax_amount'=> Util::formatToCents($taxAmount),
