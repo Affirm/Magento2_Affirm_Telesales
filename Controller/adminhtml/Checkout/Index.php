@@ -2,19 +2,18 @@
 
 namespace Affirm\Telesales\Controller\Adminhtml\Checkout;
 
+use Affirm\Telesales\Model\Adminhtml\Checkout;
+use Astound\Affirm\Model\Config as ConfigAffirm;
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
-use Magento\Framework\Controller\Result\JsonFactory;
-use Magento\Framework\Registry;
-use Magento\Framework\HTTP\ZendClientFactory;
-use Magento\Sales\Api\OrderRepositoryInterface;
-use Magento\Sales\Api\Data\OrderStatusHistoryInterface;
-use Magento\Framework\App\ProductMetadataInterface;
-use Magento\Framework\Module\ResourceInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Astound\Affirm\Model\Config as ConfigAffirm;
-use Astound\Affirm\Model\Ui\ConfigProvider;
-use Affirm\Telesales\Model\Adminhtml\Checkout;
+use Magento\Framework\App\ProductMetadataInterface;
+use Magento\Framework\Controller\Result\JsonFactory;
+use Magento\Framework\HTTP\ZendClientFactory;
+use Magento\Framework\Module\ResourceInterface;
+use Magento\Framework\Registry;
+use Magento\Sales\Api\Data\OrderStatusHistoryInterface;
+use Magento\Sales\Api\OrderRepositoryInterface;
 
 class Index extends Action
 {
@@ -41,8 +40,7 @@ class Index extends Action
         ConfigAffirm $configAffirm,
         Checkout $affirmCheckout,
         \Psr\Log\LoggerInterface $logger
-    )
-    {
+    ) {
         $this->resultJsonFactory = $resultJsonFactory;
         $this->_coreRegistry = $coreRegistry;
         $this->httpClientFactory = $httpClientFactory;
@@ -94,9 +92,10 @@ class Index extends Action
 
         // Resend if checkout token exists
         $checkout_token = $this->getPaymentCheckoutToken($order);
+        $currency_code = $order->getOrderCurrencyCode();
         if ($checkout_token) {
             try {
-                $resendCheckoutResponse = $this->affirmCheckout->resendCheckout($checkout_token);
+                $resendCheckoutResponse = $this->affirmCheckout->resendCheckout($checkout_token, $currency_code);
                 $responseStatus = $resendCheckoutResponse->getStatus();
                 $responseBody = json_decode($resendCheckoutResponse->getBody(), true);
 
@@ -114,7 +113,6 @@ class Index extends Action
                 // JSON result
                 $success = true;
                 $successMessage = 'Checkout link was re-sent successfully';
-
             } catch (\Exception $e) {
                 $this->logger->debug($e->getMessage());
                 return $result->setData([
@@ -140,7 +138,8 @@ class Index extends Action
                 ]);
             }
             try {
-                $sendCheckoutResponse = $this->affirmCheckout->sendCheckout($data);
+                $currency_code = $order->getOrderCurrencyCode();
+                $sendCheckoutResponse = $this->affirmCheckout->sendCheckout($data, $currency_code);
                 $responseStatus = $sendCheckoutResponse->getStatus();
                 $responseBody = json_decode($sendCheckoutResponse->getBody(), true);
 
@@ -162,7 +161,6 @@ class Index extends Action
                 $successMessage = 'Checkout link was sent successfully';
 
                 $checkout_token = $responseBody['checkout_id'];
-
             } catch (\Exception $e) {
                 $this->logger->debug($e->getMessage());
                 return $result->setData([
@@ -184,8 +182,8 @@ class Index extends Action
             }
 
             // Update order history comment
-            $order->addCommentToStatusHistory('Affirm checkout has been sent to the customer. Checkout token: '.$checkout_token, false, false);
-            $this->logger->debug('Affirm Telesales checkout token sent to customer: '.$checkout_token);
+            $order->addCommentToStatusHistory('Affirm checkout has been sent to the customer. Checkout token: ' . $checkout_token, false, false);
+            $this->logger->debug('Affirm Telesales checkout token sent to customer: ' . $checkout_token);
             try {
                 $this->orderRepository->save($order);
             } catch (\Exception $e) {
@@ -202,7 +200,6 @@ class Index extends Action
         ]);
     }
 
-
     /**
      * Initialize order model instance
      *
@@ -213,7 +210,6 @@ class Index extends Action
         $id = $this->getRequest()->getParam('order_id');
         try {
             $order = $this->orderRepository->get($id);
-
         } catch (NoSuchEntityException $e) {
             $this->messageManager->addErrorMessage(__('This order no longer exists'));
             $this->_actionFlag->set('', self::FLAG_NO_DISPATCH, true);

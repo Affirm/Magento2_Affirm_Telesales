@@ -2,9 +2,11 @@
 
 namespace Affirm\Telesales\Model\Adminhtml;
 
+use Affirm\Telesales\Model\Config as ConfigAffirmTelesales;
 use Astound\Affirm\Gateway\Helper\Util;
 use Astound\Affirm\Model\Config as ConfigAffirm;
 use Astound\Affirm\Model\Ui\ConfigProvider;
+use Magento\Catalog\Model\ProductRepository;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ProductMetadataInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
@@ -15,8 +17,6 @@ use Magento\Framework\Registry;
 use Magento\Framework\Url as Url;
 use Magento\Sales\Api\Data\OrderStatusHistoryInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
-use Magento\Catalog\Model\ProductRepository;
-use Affirm\Telesales\Model\Config as ConfigAffirmTelesales;
 
 class Checkout extends \Magento\Framework\Model\AbstractModel
 {
@@ -32,6 +32,11 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
     const METHOD_GET = 'GET';
     const METHOD_POST = 'POST';
     const AFFIRM_TELESALES = 'affirm_telesales';
+    const CURRENCY_CODE_CAD = 'CAD';
+    const CURRENCY_CODE_USD = 'USD';
+    const COUNTRY_CODE_CAN = 'CAN';
+    const COUNTRY_CODE_USA = 'USA';
+    const COUNTRY_SUFFIX_CA = '_ca';
     /**#@-*/
 
     public function __construct(
@@ -67,43 +72,44 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
 
     /**
      * @param $data
-     * @return string
+     * @param $currencyCode
+     * @return \Zend_Http_Response|null
      */
-    public function sendCheckout($data)
+    public function sendCheckout($data, $currencyCode = null)
     {
         $send_checkout_url = $this->getApiUrl(self::API_CHECKOUT_TELESALES_PATH);
-        return $this->_apiRequestClient($send_checkout_url, $data);
+        return $this->_apiRequestClient($send_checkout_url, $data, false, self::METHOD_POST, $currencyCode);
     }
 
     /**
      * @param $checkout_id
-     * @return string
+     * @param $currencyCode
      */
-    public function resendCheckout($checkout_id)
+    public function resendCheckout($checkout_id, $currencyCode = null)
     {
         $resend_checkout_url = $this->getApiUrl(self::API_CHECKOUT_RESEND_PATH);
         $data = ['checkout_id' => $checkout_id];
-        return $this->_apiRequestClient($resend_checkout_url, $data, true);
+        return $this->_apiRequestClient($resend_checkout_url, $data, true, self::METHOD_POST, $currencyCode);
     }
 
     /**
      * @param $checkout_id
-     * @return string
+     * @param $currencyCode
      */
-    public function readCheckout($checkout_id)
+    public function readCheckout($checkout_id, $currencyCode = null)
     {
         $read_checkout_url = $this->getApiUrl(self::API_CHECKOUT_READ_PATH);
-        return $this->_apiRequestClient($read_checkout_url . $checkout_id, null, true, self::METHOD_GET);
+        return $this->_apiRequestClient($read_checkout_url . $checkout_id, null, true, self::METHOD_GET, $currencyCode);
     }
 
     /**
      * @param $transaction_id
-     * @return string
+     * @param $currency_code
      */
-    public function readTransaction($transaction_id)
+    public function readTransaction($transaction_id, $currency_code = null)
     {
         $read_charge_url = $this->getApiUrl(self::API_TRANSACTIONS_PATH);
-        return $this->_apiRequestClient($read_charge_url . $transaction_id, null, true, self::METHOD_GET);
+        return $this->_apiRequestClient($read_charge_url . $transaction_id, null, true, self::METHOD_GET, $currency_code);
     }
 
     /**
@@ -174,20 +180,21 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
             $shippingAmount = $order->getShippingAmount();
             $taxAmount = $order->getTaxAmount();
             $total = $order->getGrandTotal();
+            $currency_code = $order->getOrderCurrencyCode();
             $data = [
                 'shipping' => $shippingObject,
                 'billing' => $billingObject,
                 'merchant' => [
-                    'user_confirmation_url' => $this->urlHelper->getUrl('telesales/payment/confirm'),
+                    'user_confirmation_url' => $this->urlHelper->getUrl('telesales/payment/success'),
                     'user_cancel_url' => $this->urlHelper->getUrl('telesales/payment/cancel'),
                     'user_decline_url' => $this->urlHelper->getUrl('telesales/payment/decline'),
-                    'user_confirmation_url_action' => self::METHOD_POST,
-                    'public_api_key' => $this->getPublicApiKey()
+                    'user_confirmation_url_action' => self::METHOD_GET,
+                    'public_api_key' => $this->getPublicApiKey($currency_code)
                 ],
                 'metadata' => [
                     'platform_type' => $this->productMetadata->getName() . self::PLATFORM_TYPE_APPEND,
                     'platform_version' => $this->productMetadata->getVersion() . ' ' . $this->productMetadata->getEdition(),
-                    'platform_affirm' => 'affirm_telesales_'.$this->moduleResource->getDbVersion('Affirm_Telesales'),
+                    'platform_affirm' => 'affirm_telesales_' . $this->moduleResource->getDbVersion('Affirm_Telesales'),
                     'mode' => self::CHECKOUT_MODE
                 ],
                 'items' => $_items,
@@ -259,11 +266,12 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
      *
      * @return string
      */
-    protected function getPrivateApiKey()
+    protected function getPrivateApiKey($currency_code = null)
     {
+        $country_suffix = isset($currency_code) ? $this->getCountrySuffixByCurrency($currency_code) : '';
         return $this->scopeConfig->getValue('payment/affirm_gateway/mode') == 'sandbox'
-            ? $this->scopeConfig->getValue('payment/affirm_gateway/private_api_key_sandbox')
-            : $this->scopeConfig->getValue('payment/affirm_gateway/private_api_key_production');
+            ? $this->scopeConfig->getValue('payment/affirm_gateway/private_api_key_sandbox' . $country_suffix)
+            : $this->scopeConfig->getValue('payment/affirm_gateway/private_api_key_production' . $country_suffix);
     }
 
     /**
@@ -271,25 +279,37 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
      *
      * @return string
      */
-    protected function getPublicApiKey()
+    protected function getPublicApiKey($currency_code = null)
     {
+        $country_suffix = isset($currency_code) ? $this->getCountrySuffixByCurrency($currency_code) : '';
         return $this->scopeConfig->getValue('payment/affirm_gateway/mode') == 'sandbox'
-            ? $this->scopeConfig->getValue('payment/affirm_gateway/public_api_key_sandbox')
-            : $this->scopeConfig->getValue('payment/affirm_gateway/public_api_key_production');
+            ? $this->scopeConfig->getValue('payment/affirm_gateway/public_api_key_sandbox' . $country_suffix)
+            : $this->scopeConfig->getValue('payment/affirm_gateway/public_api_key_production' . $country_suffix);
     }
 
     /**
      * Send Affirm checkout API request
      *
-     * @return string
+     * @param $url
+     * @param null $data
+     * @param bool $requireKeys
+     * @param string $method
+     * @param string|null $currencyCode
+     * @return \Zend_Http_Response|null
      */
-    protected function _apiRequestClient($url, $data = null, $requireKeys = false, $method = self::METHOD_POST)
+    protected function _apiRequestClient($url, $data = null, bool $requireKeys = false, string $method = self::METHOD_POST, string $currencyCode = null)
     {
         try {
             $client = $this->httpClientFactory->create();
             $client->setUri($url);
+            if ($currencyCode) {
+                $countryCode = $this->getCountryCodeByCurrency($currencyCode);
+            }
+            if (isset($countryCode)) {
+                $client->setHeaders('Country-Code', $countryCode);
+            }
             if ($requireKeys) {
-                $client->setAuth($this->getPublicApiKey(), $this->getPrivateApiKey());
+                $client->setAuth($this->getPublicApiKey($currencyCode), $this->getPrivateApiKey($currencyCode));
             }
             if ($data) {
                 $dataEncoded = json_encode($data, JSON_UNESCAPED_SLASHES);
@@ -302,4 +322,35 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
         }
     }
 
+    /**
+     * Map currency to country code
+     *
+     * @param string $currency_code
+     * @return string
+     */
+    protected function getCountryCodeByCurrency(string $currency_code): string
+    {
+        $currencyCodeToCountryCode = [
+            self::CURRENCY_CODE_CAD => self::COUNTRY_CODE_CAN,
+            self::CURRENCY_CODE_USD => self::COUNTRY_CODE_USA,
+        ];
+
+        return $currencyCodeToCountryCode[$currency_code] ?? '';
+    }
+
+    /**
+     * Map currency to country suffix
+     *
+     * @param string $currency_code
+     * @return string
+     */
+    protected function getCountrySuffixByCurrency(string $currency_code): string
+    {
+        $currencyCodeToSuffix = [
+            self::CURRENCY_CODE_CAD => self::COUNTRY_SUFFIX_CA,
+            self::CURRENCY_CODE_USD => '',
+        ];
+
+        return $currencyCodeToSuffix[$currency_code] ?? '';
+    }
 }
