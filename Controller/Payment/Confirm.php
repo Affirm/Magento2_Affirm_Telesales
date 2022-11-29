@@ -96,7 +96,7 @@ class Confirm extends Action implements CsrfAwareActionInterface
             $test = $this->affirmData->mapResponseToMessage($responseBody);
         } catch (\Exception $e) {
             $this->logger->debug('Affirm Telesales checkout confirm error: ' . $e);
-            return $this->getErrorResult($result, $e)
+            return $this->getErrorResult($result, $e);
         }
 
         // Verify checkout_token and checkout_status
@@ -114,7 +114,7 @@ class Confirm extends Action implements CsrfAwareActionInterface
         $order_id = $responseBody['merchant_external_reference'] ?? $responseBody['order_id'];
 
         if (!isset($order_id)) {
-            $_message = __('Affirm Telesales - Missing merchant external reference')
+            $_message = __('Affirm Telesales - Missing merchant external reference');
             $this->logger->debug($_message);
             return $this->getErrorResult($result, $_message);
         }
@@ -180,7 +180,7 @@ class Confirm extends Action implements CsrfAwareActionInterface
         $result->setData([
             'success' => false,
             'message' => $e
-        ])
+        ]);
         return $result;
     }
 }
