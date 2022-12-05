@@ -1,18 +1,20 @@
 <?php
 namespace Affirm\Telesales\Controller\Payment;
 
+use Affirm\Telesales\Model\Adminhtml\Checkout as AffirmCheckout;
+use Magento\Checkout\Model\Session;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\CsrfAwareActionInterface;
-use Magento\Framework\App\RequestInterface;
 use Magento\Framework\App\Request\InvalidRequestException;
+use Magento\Framework\App\RequestInterface;
+use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Framework\Exception\LocalizedException;
-use Magento\Checkout\Model\Session;
 use Magento\Quote\Api\CartManagementInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
-use Magento\Sales\Model\OrderFactory;
 use Magento\Sales\Api\OrderManagementInterface as OrderManagement;
-use Affirm\Telesales\Model\Adminhtml\Checkout as AffirmCheckout;
+use Magento\Sales\Model\OrderFactory;
+use Affirm\Telesales\Helper\Data as AffirmData;
 
 class Confirm extends Action implements CsrfAwareActionInterface
 {
@@ -30,8 +32,10 @@ class Confirm extends Action implements CsrfAwareActionInterface
         OrderManagement $orderManagement,
         CartRepositoryInterface $quoteRepository,
         AffirmCheckout $affirmCheckout,
+        JsonFactory $resultJsonFactory,
+        AffirmData $affirmData,
         \Psr\Log\LoggerInterface $logger
-    )	{
+    ) {
         parent::__construct($context);
         $this->_checkoutSession = $checkoutSession;
         $this->quoteManagement = $cartManagement;
@@ -39,6 +43,8 @@ class Confirm extends Action implements CsrfAwareActionInterface
         $this->orderManagement = $orderManagement;
         $this->quoteRepository = $quoteRepository;
         $this->affirmCheckout = $affirmCheckout;
+        $this->resultJsonFactory = $resultJsonFactory;
+        $this->affirmData = $affirmData;
         $this->logger = $logger;
     }
 
@@ -58,39 +64,65 @@ class Confirm extends Action implements CsrfAwareActionInterface
     {
         return true;
     }
-    
-     /**
-     * @inheritDoc
-     */
+
+    /**
+    * @inheritDoc
+    */
     public function execute()
     {
-        $checkout_token = $this->getRequest()->getParam('checkout_token');
-        $this->logger->debug('Affirm Telesales checkout confirm action: '.$checkout_token);
-        if (!isset($checkout_token)) {
-            return $this->cancelRedirect();
+        $result = $this->resultJsonFactory->create();
+        $checkout_token = $this->getRequest()->getParam('checkout_token') ?? null;
+        $currency_code = $this->getRequest()->getParam('currency_code') ?? 'USD';
+        $this->logger->debug('Affirm Telesales checkout confirm action: ' . $checkout_token);
+        if (!$checkout_token) {
+            $result->setData([
+                'success' => true,
+                'checkout_status' => "Not sent",
+                'checkout_status_message' => "Send checkout link to customer"
+            ]);
+            return $result;
         }
 
         // Get orderIncrementId from checkout read
-        $readCheckoutResponse = $this->affirmCheckout->readCheckout($checkout_token);
-        $responseBody = json_decode($readCheckoutResponse->getBody(), true);
-        $order_id = $responseBody['merchant_external_reference'] ?: $responseBody['order_id'];
-        $checkout_status = $responseBody['checkout_status'];
+        $checkout_status = '';
+        try {
+            $readCheckoutResponse = $this->affirmCheckout->readCheckout($checkout_token, $currency_code);
+            $response_date = $readCheckoutResponse->getHeader('Date');
+            $this->logger->debug('Affirm Telesales checkout confirm responseBody: ' . $readCheckoutResponse->getBody());
+            $responseBody = json_decode($readCheckoutResponse->getBody(), true);
+            if (isset($responseBody['checkout_status'])) {
+                $checkout_status = $responseBody['checkout_status'];
+            }
+            $test = $this->affirmData->mapResponseToMessage($responseBody);
+        } catch (\Exception $e) {
+            $this->logger->debug('Affirm Telesales checkout confirm error: ' . $e);
+            return $this->getErrorResult($result, $e);
+        }
+
+        // Verify checkout_token and checkout_status
+        if ($checkout_status !== 'confirmed' && $checkout_status !=='authorized') {
+            $result->setData([
+                'success' => true,
+                'message' => "Last refreshed: " . $response_date,
+                'checkout_status' => "Application sent",
+                'checkout_status_message' => "Waiting for customer to start the application"
+            ]);
+            return $result;
+        }
+
+        // Order ID
+        $order_id = $responseBody['merchant_external_reference'] ?? $responseBody['order_id'];
 
         if (!isset($order_id)) {
-            $this->logger->debug('Affirm Telesales - Missing merchant external reference');
-            return $this->cancelRedirect();
+            $_message = __('Affirm Telesales - Missing merchant external reference');
+            $this->logger->debug($_message);
+            return $this->getErrorResult($result, $_message);
         }
 
         // Load order
         $_order = $this->orderFactory->create()->loadByIncrementId($order_id);
         $quoteId = $_order->getQuoteId();
         $quote = $this->quoteRepository->get($quoteId);
-
-        // Verify checkout_token and checkout_status
-        if ($checkout_token !== $_order->getPayment()->getAdditionalInformation('checkout_token') || $checkout_status !== self::CHECKOUT_STATUS_CONFIRMED) {
-            $this->logger->debug('Affirm Telesales - Invalid checkout token');
-            return $this->cancelRedirect();
-        }
 
         // Set checkout_token to quote
         $payment = $quote->getPayment();
@@ -109,18 +141,17 @@ class Confirm extends Action implements CsrfAwareActionInterface
             $_order->addCommentToStatusHistory($e->getMessage());
             $_order->save();
 
-            return $this->cancelRedirect();
+            return $this->getErrorResult($result, $e);
         } catch (\Exception $e) {
             $this->messageManager->addExceptionMessage(
                 $e,
                 __('We can\'t place the order.')
             );
-            return $this->cancelRedirect();
+            return $this->getErrorResult($result, $e);
         }
 
         $_orderState = $order->getState();
         $_orderStatus = $order->getStatus();
-
 
         $this->_checkoutSession
             ->setLastQuoteId($quoteId)
@@ -135,14 +166,21 @@ class Confirm extends Action implements CsrfAwareActionInterface
             ['order' => $order, 'quote' => $quote ]
         );
 
-        $this->_redirect('checkout/onepage/success');
-        return;
+        $result->setData([
+            'success' => true,
+            'message' => "Success",
+            'checkout_status' => "Payment authorized",
+            'checkout_status_message' => "Payment is complete. Ready to finalize order"
+        ]);
+        return $result;
     }
 
-    private function cancelRedirect() {
-        $resultRedirect = $this->resultRedirectFactory->create();
-        $resultRedirect->setPath('telesales/payment/cancel');
-        return $resultRedirect;
+    private function getErrorResult($result, $e)
+    {
+        $result->setData([
+            'success' => false,
+            'message' => $e
+        ]);
+        return $result;
     }
-
 }

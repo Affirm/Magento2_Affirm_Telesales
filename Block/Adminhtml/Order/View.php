@@ -2,6 +2,9 @@
 namespace Affirm\Telesales\Block\Adminhtml\Order;
 
 use Affirm\Telesales\Model\Adminhtml\Checkout;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Url;
+use Magento\Sales\Api\OrderManagementInterface as OrderManagement;
 
 /**
  * Class View
@@ -13,6 +16,8 @@ class View extends \Magento\Backend\Block\Template
      * Define constants
      */
     const TELESALES_CHECKOUT_ENDPOINT = 'affirm_telesales/checkout';
+    const TELESALES_AUTH_ENDPOINT = 'affirm_telesales/auth';
+    const TELESALES_CONFIRM_ENDPOINT = 'telesales/payment/confirm';
     const STATUS_OPENED = 'opened';
     const STATUS_APPROVED = 'approved';
     const STATUS_CONFIRMED = 'confirmed';
@@ -38,15 +43,18 @@ class View extends \Magento\Backend\Block\Template
         \Magento\Sales\Helper\Admin $adminHelper,
         \Magento\Framework\HTTP\ZendClientFactory $httpClientFactory,
         \Astound\Affirm\Model\Config $affirmConfig,
-        Checkout $affirmCheckout
-    )
-    {
+        Checkout $affirmCheckout,
+        OrderManagement $orderManagement,
+        Url $urlHelper,
+    ) {
         parent::__construct($context);
         $this->_coreRegistry = $registry;
         $this->adminHelper = $adminHelper;
         $this->httpClientFactory = $httpClientFactory;
         $this->affirmConfig = $affirmConfig;
         $this->affirmCheckout = $affirmCheckout;
+        $this->orderManagement = $orderManagement;
+        $this->urlHelper = $urlHelper;
         $this->_logger = $context->getLogger();
     }
 
@@ -67,6 +75,30 @@ class View extends \Magento\Backend\Block\Template
         )->setData(
             [
                 'id' => 'send_checkout_button',
+                'class' => 'action-secondary',
+                'label' => __($label),
+                'display' => false
+            ]
+        );
+
+        return $button->toHtml();
+    }
+
+    /**
+     * Refresh/Auth Button
+     *
+     * @return string
+     * @throws LocalizedException
+     */
+    public function getSendAuthButtonHtml()
+    {
+        $label = 'Refresh';
+
+        $button = $this->getLayout()->createBlock(
+            'Magento\Backend\Block\Widget\Button'
+        )->setData(
+            [
+                'id' => 'send_auth_button',
                 'class' => 'action-secondary',
                 'label' => __($label),
                 'display' => false
@@ -98,6 +130,26 @@ class View extends \Magento\Backend\Block\Template
     }
 
     /**
+     * Return ajax url for send Affirm auth button
+     *
+     * @return string
+     */
+    public function getAjaxUrlAuth()
+    {
+        return $this->getUrl(self::TELESALES_AUTH_ENDPOINT, [self::ORDER_ID => $this->getOrder()->getId()]);
+    }
+
+    /**
+     * Return ajax url for send Affirm auth button
+     *
+     * @return string
+     */
+    public function getAjaxUrlConfirm()
+    {
+        return $this->urlHelper->getUrl(self::TELESALES_CONFIRM_ENDPOINT);
+    }
+
+    /**
      * Get stat uses
      *
      * @return array
@@ -118,6 +170,17 @@ class View extends \Magento\Backend\Block\Template
     {
         $_order = $this->_coreRegistry->registry('sales_order');
         return $_order;
+    }
+
+    /**
+     * Get order currency code
+     *
+     * @return float|string
+     */
+    public function getCurrencyCode(): float|string
+    {
+        $_order = $this->getOrder();
+        return $_order->getOrderCurrencyCode();
     }
 
     /**
@@ -162,7 +225,7 @@ class View extends \Magento\Backend\Block\Template
                 return null;
         }
 
-        $result = array();
+        $result = [];
         $result['checkout_action'] = null;
 
         // Check checkout token exists and display action
@@ -174,26 +237,33 @@ class View extends \Magento\Backend\Block\Template
             return $result;
         }
 
-        $readCheckoutResponse = $this->affirmCheckout->readCheckout($checkout_token);
-        $responseStatus = $readCheckoutResponse->getStatus();
-        $responseBody = json_decode($readCheckoutResponse->getBody(), true);
-        $checkout_status = $responseBody['checkout_status'] ?: null;
+        // Get order currency code
+        $currencyCode = $this->getCurrencyCode();
+
+        $readCheckoutResponse = $this->affirmCheckout->readCheckout($checkout_token, $currencyCode);
+        if (isset($readCheckoutResponse)) {
+            $responseStatus = $readCheckoutResponse->getStatus();
+            $responseBody = json_decode($readCheckoutResponse->getBody(), true);
+            $checkout_status = $responseBody['checkout_status'] ?? null;
+        } else {
+            return null;
+        }
 
         // Read transaction endpoint if transaction id exists
         $transaction_id = $this->getTransactionId();
         if ($transaction_id) {
-            $readTransactionResponse = $this->affirmCheckout->readTransaction($transaction_id);
+            $readTransactionResponse = $this->affirmCheckout->readTransaction($transaction_id, $currencyCode);
             $responseBody = $readTransactionResponse ? json_decode($readTransactionResponse->getBody(), true) : null;
             $transaction_status = $responseBody ? $responseBody['status'] : null;
-            if ($transaction_status === self::STATUS_AUTHORIZED) {
+            if ($transaction_status == self::STATUS_AUTHORIZED) {
                 $checkout_status = $transaction_status;
-            } else if ($transaction_status && $transaction_status !== self::STATUS_AUTHORIZED) {
+            } elseif ($transaction_status && $transaction_status != self::STATUS_AUTHORIZED) {
                 // return null if there is no further action for checkout status update
                 return null;
             }
         }
 
-        if ($responseStatus > 200 || !$checkout_status) {
+        if ((isset($responseStatus) && $responseStatus > 200) || !isset($checkout_status)) {
             $this->_logger->debug('Affirm_Telesales__readCheckout_status_code: ', [$responseStatus]);
             $this->_logger->debug('Affirm_Telesales__readCheckout_response_body: ', [$responseBody]);
             $result['checkout_status'] = 'Error';
@@ -213,6 +283,7 @@ class View extends \Magento\Backend\Block\Template
                 case self::STATUS_CONFIRMED:
                     $result['checkout_status']  = "Loan completed";
                     $result['checkout_status_message'] = "Customer's application is done. Waiting on merchant to authorize the loan";
+                    $result['checkout_action'] = true;
                     break;
                 case self::STATUS_AUTHORIZED:
                     $result['checkout_status']  = "Payment authorized";
@@ -236,7 +307,7 @@ class View extends \Magento\Backend\Block\Template
                 default:
                     $result['checkout_status']  = "Application sent";
                     $result['checkout_status_message'] = "Waiting for customer to start the application";
-                    $result['checkout_action'] = true;;
+                    $result['checkout_action'] = true;
                     break;
             }
         }
@@ -262,7 +333,8 @@ class View extends \Magento\Backend\Block\Template
      * @param null|string $comment
      * @return null
      */
-    private function cancelOrderWithComment($comment = null) {
+    private function cancelOrderWithComment($comment = null)
+    {
         $_order = $this->getOrder();
         $_order->setState(\Magento\Sales\Model\Order::STATE_CANCELED)
             ->setStatus(\Magento\Sales\Model\Order::STATE_CANCELED);

@@ -5,6 +5,7 @@
 $paymentCheckoutToken = $block->getPaymentCheckoutToken();
 $readCheckoutResult = $block->getReadCheckoutAPI();
 $isAffirmPaymentMethod = $block->isAffirmPaymentMethod();
+$currencyCode = $block->getCurrencyCode();
 
 if ($readCheckoutResult && $isAffirmPaymentMethod) {
 ?>
@@ -52,7 +53,7 @@ if ($readCheckoutResult && $isAffirmPaymentMethod) {
 
                         if (success) {
                             sendCheckoutSpan.find('.success').show();
-                            _$('#send_checkout_button > span').text("Re-send Affirm Checkout Link");
+                            window.location.reload();
                         } else {
                             sendCheckoutSpan.find('.fail').show();
                         }
@@ -67,16 +68,72 @@ if ($readCheckoutResult && $isAffirmPaymentMethod) {
             });
         });
 
+        // Send Auth Button
+        _$('#send_auth_button').click(function () {
+            const params = {
+                'checkout_token': '<?php echo $paymentCheckoutToken ?>',
+                'currency_code': '<?php echo $currencyCode ?>'
+            };
+            new Ajax.Request('<?php echo $block->getAjaxUrlConfirm() ?>', {
+                parameters:     params,
+                loaderArea:     false,
+                asynchronous:   true,
+                onCreate: function() {
+                    _$('#send_auth_button').prop('disabled', true);
+                    sendCheckoutSpan.find('.success').hide();
+                    sendCheckoutSpan.find('.fail').hide();
+                    sendCheckoutSpan.find('.processing').show();
+                    _$('#send_auth_message').text('');
+                },
+                onSuccess: function(response) {
+                    sendCheckoutSpan.find('.processing').hide();
+                    _$('#send_auth_button').prop('disabled', false);
+                    console.log(response);
+                    if (response.status > 200) {
+                        sendCheckoutSpan.find('.fail').show();
+                        _$('#send_auth_message').text('Error');
+                    } else {
+                        var jsonResponse = response.responseJSON || {};
+                        var success = jsonResponse.success || null;
+                        var message = jsonResponse.message || null;
+                        var checkout_status = jsonResponse.checkout_status || null;
+                        var checkout_status_message = jsonResponse.checkout_status_message || null;
+                        var checkout_action = jsonResponse.checkout_action || null;
+
+                        if (success) {
+                            sendCheckoutSpan.find('.success').show();
+                            window.location.reload();
+                        } else {
+                            sendCheckoutSpan.find('.fail').show();
+                        }
+
+                        if (message || checkout_status || checkout_status_message) {
+                            _$('#send_checkout_message').text(message);
+                            _$('#checkout_status').text(checkout_status);
+                            _$('#checkout_status_message').text(checkout_status_message);
+                        }
+                    }
+                }
+            });
+        });
+
     });
 </script>
 <?php if ($readCheckoutResult['checkout_action']): ?>
 <div class="affirm-telesales-checkout-actions" style="margin-top: 1.7rem">
     <?php echo $block->getSendCheckoutButtonHtml() ?>
-    <span class="collect-indicator" id="send_checkout_span">
+    <?php echo $block->getSendAuthButtonHtml() ?>
+    <span class="collect-indicator" id="send_checkout_span" style="display: block; margin-top: 1rem;">
         <img class="processing" hidden="hidden" alt="Fetching" style="margin:0 5px; vertical-align: middle;" src="<?php echo $block->getViewFileUrl('images/process_spinner.gif') ?>"/>
         <img class="success" hidden="hidden" alt="Success" style="margin:-3px 5px" src="<?php echo $block->getViewFileUrl('images/rule_component_apply.gif') ?>"/>
         <img class="fail" hidden="hidden" alt="Failed" style="margin:-3px 5px" src="<?php echo $block->getViewFileUrl('images/rule_component_remove.gif') ?>"/>
         <span id="send_checkout_message" style="vertical-align: middle;"></span>
+    </span>
+    <span class="collect-indicator" id="send_auth_span" style="display: block; margin-top: 1rem;">
+        <img class="processing" hidden="hidden" alt="Fetching" style="margin:0 5px; vertical-align: middle;" src="<?php echo $block->getViewFileUrl('images/process_spinner.gif') ?>"/>
+        <img class="success" hidden="hidden" alt="Success" style="margin:-3px 5px" src="<?php echo $block->getViewFileUrl('images/rule_component_apply.gif') ?>"/>
+        <img class="fail" hidden="hidden" alt="Failed" style="margin:-3px 5px" src="<?php echo $block->getViewFileUrl('images/rule_component_remove.gif') ?>"/>
+        <span id="send_auth_message" style="vertical-align: middle;"></span>
     </span>
 </div>
 <?php endif; ?>
