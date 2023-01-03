@@ -14,7 +14,6 @@ use Magento\Quote\Api\CartManagementInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Sales\Api\OrderManagementInterface as OrderManagement;
 use Magento\Sales\Model\OrderFactory;
-use Affirm\Telesales\Helper\Data as AffirmData;
 
 class Confirm extends Action implements CsrfAwareActionInterface
 {
@@ -33,7 +32,6 @@ class Confirm extends Action implements CsrfAwareActionInterface
         CartRepositoryInterface $quoteRepository,
         AffirmCheckout $affirmCheckout,
         JsonFactory $resultJsonFactory,
-        AffirmData $affirmData,
         \Psr\Log\LoggerInterface $logger
     ) {
         parent::__construct($context);
@@ -44,7 +42,6 @@ class Confirm extends Action implements CsrfAwareActionInterface
         $this->quoteRepository = $quoteRepository;
         $this->affirmCheckout = $affirmCheckout;
         $this->resultJsonFactory = $resultJsonFactory;
-        $this->affirmData = $affirmData;
         $this->logger = $logger;
     }
 
@@ -93,7 +90,6 @@ class Confirm extends Action implements CsrfAwareActionInterface
             if (isset($responseBody['checkout_status'])) {
                 $checkout_status = $responseBody['checkout_status'];
             }
-            $test = $this->affirmData->mapResponseToMessage($responseBody);
         } catch (\Exception $e) {
             $this->logger->debug('Affirm Telesales checkout confirm error: ' . $e);
             return $this->getErrorResult($result, $e);
