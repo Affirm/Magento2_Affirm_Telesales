@@ -45,7 +45,7 @@ class View extends \Magento\Backend\Block\Template
         \Astound\Affirm\Model\Config $affirmConfig,
         Checkout $affirmCheckout,
         OrderManagement $orderManagement,
-        Url $urlHelper,
+        Url $urlHelper
     ) {
         parent::__construct($context);
         $this->_coreRegistry = $registry;
