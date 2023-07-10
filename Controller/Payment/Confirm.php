@@ -66,7 +66,7 @@ class Confirm extends Action implements CsrfAwareActionInterface
     * @inheritDoc
     */
     public function execute()
-    {
+    {   
         $result = $this->resultJsonFactory->create();
         $checkout_token = $this->getRequest()->getParam('checkout_token') ?? null;
         $currency_code = $this->getRequest()->getParam('currency_code') ?? 'USD';
@@ -84,7 +84,7 @@ class Confirm extends Action implements CsrfAwareActionInterface
         $checkout_status = '';
         try {
             $readCheckoutResponse = $this->affirmCheckout->readCheckout($checkout_token, $currency_code);
-            $response_date = $readCheckoutResponse->getHeader('Date');
+            $response_date = $readCheckoutResponse->getHeaders('Date');
             $this->logger->debug('Affirm Telesales checkout confirm responseBody: ' . $readCheckoutResponse->getBody());
             $responseBody = json_decode($readCheckoutResponse->getBody(), true);
             if (isset($responseBody['checkout_status'])) {
@@ -108,7 +108,6 @@ class Confirm extends Action implements CsrfAwareActionInterface
 
         // Order ID
         $order_id = $responseBody['merchant_external_reference'] ?? $responseBody['order_id'];
-
         if (!isset($order_id)) {
             $_message = __('Affirm Telesales - Missing merchant external reference');
             $this->logger->debug($_message);
@@ -148,7 +147,6 @@ class Confirm extends Action implements CsrfAwareActionInterface
 
         $_orderState = $order->getState();
         $_orderStatus = $order->getStatus();
-
         $this->_checkoutSession
             ->setLastQuoteId($quoteId)
             ->setLastSuccessQuoteId($quoteId);
@@ -156,7 +154,6 @@ class Confirm extends Action implements CsrfAwareActionInterface
             ->setLastOrderId($order->getId())
             ->setLastRealOrderId($order->getIncrementId())
             ->setLastOrderStatus($_orderStatus);
-
         $this->_eventManager->dispatch(
             'affirm_place_order_success',
             ['order' => $order, 'quote' => $quote ]

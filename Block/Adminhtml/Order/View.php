@@ -41,7 +41,7 @@ class View extends \Magento\Backend\Block\Template
         \Magento\Backend\Block\Template\Context $context,
         \Magento\Framework\Registry $registry,
         \Magento\Sales\Helper\Admin $adminHelper,
-        \Magento\Framework\HTTP\ZendClientFactory $httpClientFactory,
+        \Laminas\Http\Client $httpClientFactory,
         \Astound\Affirm\Model\Config $affirmConfig,
         Checkout $affirmCheckout,
         OrderManagement $orderManagement,
@@ -239,16 +239,14 @@ class View extends \Magento\Backend\Block\Template
 
         // Get order currency code
         $currencyCode = $this->getCurrencyCode();
-
         $readCheckoutResponse = $this->affirmCheckout->readCheckout($checkout_token, $currencyCode);
         if (isset($readCheckoutResponse)) {
-            $responseStatus = $readCheckoutResponse->getStatus();
+            $responseStatus = $readCheckoutResponse->getStatusCode();
             $responseBody = json_decode($readCheckoutResponse->getBody(), true);
             $checkout_status = $responseBody['checkout_status'] ?? null;
         } else {
             return null;
         }
-
         // Read transaction endpoint if transaction id exists
         $transaction_id = $this->getTransactionId();
         if ($transaction_id) {
