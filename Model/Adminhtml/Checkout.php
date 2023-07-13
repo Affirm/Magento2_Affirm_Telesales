@@ -10,7 +10,7 @@ use Magento\Catalog\Model\ProductRepository;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ProductMetadataInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
-use Magento\Framework\HTTP\ZendClientFactory;
+use Laminas\Http\Client;
 use Magento\Framework\Model\Context;
 use Magento\Framework\Module\ResourceInterface;
 use Magento\Framework\Registry;
@@ -42,7 +42,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
     public function __construct(
         Context $context,
         Registry $coreRegistry,
-        ZendClientFactory $httpClientFactory,
+        Client $httpClientFactory,
         JsonFactory $resultJsonFactory,
         OrderRepositoryInterface $orderRepository,
         OrderStatusHistoryInterface $orderStatusRepository,
@@ -73,7 +73,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
     /**
      * @param $data
      * @param $currencyCode
-     * @return \Zend_Http_Response|null
+     * @return \Http_Response|null
      */
     public function sendCheckout($data, $currencyCode = null)
     {
@@ -295,27 +295,30 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
      * @param bool $requireKeys
      * @param string $method
      * @param string|null $currencyCode
-     * @return \Zend_Http_Response|null
+     * @return \Http_Response|null
      */
     protected function _apiRequestClient($url, $data = null, bool $requireKeys = false, string $method = self::METHOD_POST, string $currencyCode = null)
     {
         try {
-            $client = $this->httpClientFactory->create();
+            $client = $this->httpClientFactory;
             $client->setUri($url);
+            $headers = $client->getRequest()->getHeaders();
             if ($currencyCode) {
                 $countryCode = $this->getCountryCodeByCurrency($currencyCode);
             }
             if (isset($countryCode)) {
-                $client->setHeaders('Country-Code', $countryCode);
+                $headers->addHeaderLine('Country-Code', $countryCode);
             }
             if ($requireKeys) {
                 $client->setAuth($this->getPublicApiKey($currencyCode), $this->getPrivateApiKey($currencyCode));
             }
             if ($data) {
                 $dataEncoded = json_encode($data, JSON_UNESCAPED_SLASHES);
-                $client->setRawData($dataEncoded, 'application/json');
+                $client->setEncType('application/json');
+                $client->setRawBody($dataEncoded);;
             }
-            $response = $client->request($method);
+            $client->setMethod($method);
+            $response = $client->send();
             return $response;
         } catch (\Exception $e) {
             return $this->_logger->debug($e->getMessage());

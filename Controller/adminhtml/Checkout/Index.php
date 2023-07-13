@@ -9,7 +9,7 @@ use Magento\Backend\App\Action\Context;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ProductMetadataInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
-use Magento\Framework\HTTP\ZendClientFactory;
+use Laminas\Http\Client;
 use Magento\Framework\Module\ResourceInterface;
 use Magento\Framework\Registry;
 use Magento\Sales\Api\Data\OrderStatusHistoryInterface;
@@ -31,7 +31,7 @@ class Index extends Action
         Context $context,
         JsonFactory $resultJsonFactory,
         Registry $coreRegistry,
-        ZendClientFactory $httpClientFactory,
+        Client $httpClientFactory,
         OrderRepositoryInterface $orderRepository,
         OrderStatusHistoryInterface $orderStatusRepository,
         ProductMetadataInterface $productMetadata,
@@ -96,7 +96,7 @@ class Index extends Action
         if ($checkout_token) {
             try {
                 $resendCheckoutResponse = $this->affirmCheckout->resendCheckout($checkout_token, $currency_code);
-                $responseStatus = $resendCheckoutResponse->getStatus();
+                $responseStatus = $resendCheckoutResponse->getStatusCode();
                 $responseBody = json_decode($resendCheckoutResponse->getBody(), true);
 
                 if ($responseStatus > 200) {
@@ -140,9 +140,8 @@ class Index extends Action
             try {
                 $currency_code = $order->getOrderCurrencyCode();
                 $sendCheckoutResponse = $this->affirmCheckout->sendCheckout($data, $currency_code);
-                $responseStatus = $sendCheckoutResponse->getStatus();
+                $responseStatus = $sendCheckoutResponse->getStatusCode();
                 $responseBody = json_decode($sendCheckoutResponse->getBody(), true);
-
                 if ($responseStatus > 200) {
                     $this->logger->debug('Affirm_Telesales__sendCheckout_status_code: ', [$responseStatus]);
                     $this->logger->debug('Affirm_Telesales__sendCheckout_response_body: ', [$responseBody]);
@@ -190,7 +189,6 @@ class Index extends Action
                 $this->logger->debug($e->getMessage());
             }
         }
-
         // Return JSON result
         return $result->setData([
             'success' => $success,
