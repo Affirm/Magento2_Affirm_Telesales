@@ -125,25 +125,6 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
         }
 
         try {
-            $shippingAddress = $order->getShippingAddress();
-            $shippingObject = [
-                'name' => [
-                    'full_name' => $shippingAddress->getName(),
-                    'first' => $shippingAddress->getFirstname(),
-                    'last' => $shippingAddress->getLastname()
-                ],
-                'address'=>[
-                    'line1' => $shippingAddress->getStreetLine(1),
-                    'line2' => empty($shippingAddress->getStreetLine(2)) ? null : $shippingAddress->getStreetLine(2),
-                    'city' => $shippingAddress->getCity(),
-                    'state' => empty($shippingAddress->getRegionCode()) ? $this->getRegionCode($shippingAddress->getRegionId()) : $shippingAddress->getRegionCode(),
-                    'zipcode' => $shippingAddress->getPostcode(),
-                    'country' => $shippingAddress->getCountryId()
-                ],
-                'email' => $shippingAddress->getEmail(),
-                'phone_number' => $shippingAddress->getTelephone()
-            ];
-
             $billingAddress = $order->getBillingAddress();
             $billingObject = [
                 'name' => [
@@ -162,6 +143,30 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
                 'email' => $billingAddress->getEmail(),
                 'phone_number' => $billingAddress->getTelephone()
             ];
+
+            $shippingAddress = $order->getShippingAddress();
+            if (!$shippingAddress || $order->getData('is_virtual')) {
+                $shippingObject = $billingObject;
+            } else {
+                $shippingAddress = $order->getShippingAddress();
+                $shippingObject = [
+                    'name' => [
+                        'full_name' => $shippingAddress->getName(),
+                        'first' => $shippingAddress->getFirstname(),
+                        'last' => $shippingAddress->getLastname()
+                    ],
+                    'address'=>[
+                        'line1' => $shippingAddress->getStreetLine(1),
+                        'line2' => empty($shippingAddress->getStreetLine(2)) ? null : $shippingAddress->getStreetLine(2),
+                        'city' => $shippingAddress->getCity(),
+                        'state' => empty($shippingAddress->getRegionCode()) ? $this->getRegionCode($shippingAddress->getRegionId()) : $shippingAddress->getRegionCode(),
+                        'zipcode' => $shippingAddress->getPostcode(),
+                        'country' => $shippingAddress->getCountryId()
+                    ],
+                    'email' => $shippingAddress->getEmail(),
+                    'phone_number' => $shippingAddress->getTelephone()
+                ];
+            }
 
             $_items = [];
             foreach ($order->getAllItems() as $item) {
