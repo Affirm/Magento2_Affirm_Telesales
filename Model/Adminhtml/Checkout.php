@@ -148,7 +148,6 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
             if (!$shippingAddress || $order->getData('is_virtual')) {
                 $shippingObject = $billingObject;
             } else {
-                $shippingAddress = $order->getShippingAddress();
                 $shippingObject = [
                     'name' => [
                         'full_name' => $shippingAddress->getName(),
