@@ -23,8 +23,13 @@ class Success extends Action
     public function execute()
     {
         $messages = $this->messageManager->getMessages();
-        if ($messages) {
-            $this->messageManager->addErrorMessage($messages);
+        $messagesItems = array();
+        foreach ($this->messageManager->getMessages()->getItems() as $item) {
+            $messagesItems[] = $item->getText();
+        }
+        if ($messagesItems) {
+            $_messages = implode('; ', $messagesItems);
+            $this->messageManager->addError($_messages);
         }
         return $this->_pageFactory->create();
     }
