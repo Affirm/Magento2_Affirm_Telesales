@@ -14,6 +14,7 @@ use Magento\Quote\Api\CartManagementInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Sales\Api\OrderManagementInterface as OrderManagement;
 use Magento\Sales\Model\OrderFactory;
+use Astound\Affirm\Helper\ErrorTracker;
 
 class Confirm extends Action implements CsrfAwareActionInterface
 {
@@ -32,7 +33,8 @@ class Confirm extends Action implements CsrfAwareActionInterface
         CartRepositoryInterface $quoteRepository,
         AffirmCheckout $affirmCheckout,
         JsonFactory $resultJsonFactory,
-        \Psr\Log\LoggerInterface $logger
+        \Psr\Log\LoggerInterface $logger,
+        ErrorTracker $errorTracker
     ) {
         parent::__construct($context);
         $this->_checkoutSession = $checkoutSession;
@@ -42,6 +44,7 @@ class Confirm extends Action implements CsrfAwareActionInterface
         $this->quoteRepository = $quoteRepository;
         $this->affirmCheckout = $affirmCheckout;
         $this->resultJsonFactory = $resultJsonFactory;
+        $this->errorTracker = $errorTracker;
         $this->logger = $logger;
     }
 
@@ -92,6 +95,12 @@ class Confirm extends Action implements CsrfAwareActionInterface
             }
         } catch (\Exception $e) {
             $this->logger->debug('Affirm Telesales checkout confirm error: ' . $e);
+            $this->errorTracker->logErrorToAffirm(
+                transaction_step: 'pre_auth',
+                error_type: ErrorTracker::INTERNAL_SERVER_ERROR,
+                exception: $e,
+                is_telesales: true
+            );
             return $this->getErrorResult($result, $e);
         }
 
@@ -111,6 +120,12 @@ class Confirm extends Action implements CsrfAwareActionInterface
         if (!isset($order_id)) {
             $_message = __('Affirm Telesales - Missing merchant external reference');
             $this->logger->debug($_message);
+            $this->errorTracker->logErrorToAffirm(
+                transaction_step: 'pre_auth',
+                error_type: ErrorTracker::TRANSACTION_DECLINED,
+                error_message: $_message,
+                is_telesales: true
+            );
             return $this->getErrorResult($result, $_message);
         }
 
@@ -135,12 +150,24 @@ class Confirm extends Action implements CsrfAwareActionInterface
             );
             $_order->addCommentToStatusHistory($e->getMessage());
             $_order->save();
+            $this->errorTracker->logErrorToAffirm(
+                transaction_step: 'pre_auth',
+                error_type: ErrorTracker::INTERNAL_SERVER_ERROR,
+                exception: $e,
+                is_telesales: true
+            );
 
             return $this->getErrorResult($result, $e);
         } catch (\Exception $e) {
             $this->messageManager->addExceptionMessage(
                 $e,
                 __('We can\'t place the order.')
+            );
+            $this->errorTracker->logErrorToAffirm(
+                transaction_step: 'pre_auth',
+                error_type: ErrorTracker::INTERNAL_SERVER_ERROR,
+                exception: $e,
+                is_telesales: true
             );
             return $this->getErrorResult($result, $e);
         }
