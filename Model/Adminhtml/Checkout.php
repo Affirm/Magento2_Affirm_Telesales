@@ -52,7 +52,8 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
         ScopeConfigInterface $scopeConfig,
         Url $urlHelper,
         ConfigAffirm $configAffirm,
-        ConfigAffirmTelesales $configAffirmTelesales
+        ConfigAffirmTelesales $configAffirmTelesales,
+        Util $util
     ) {
         $this->_coreRegistry = $coreRegistry;
         $this->httpClientFactory = $httpClientFactory;
@@ -67,6 +68,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
         $this->affirmConfig = $configAffirm;
         $this->telesalesConfig = $configAffirmTelesales;
         $this->_logger = $context->getLogger();
+        $this->util = $util;
         parent::__construct($context, $coreRegistry);
     }
 
@@ -143,7 +145,6 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
                 'email' => $billingAddress->getEmail(),
                 'phone_number' => $billingAddress->getTelephone()
             ];
-
             $shippingAddress = $order->getShippingAddress();
             if (!$shippingAddress || $order->getData('is_virtual')) {
                 $shippingObject = $billingObject;
@@ -166,7 +167,6 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
                     'phone_number' => $shippingAddress->getTelephone()
                 ];
             }
-
             $_items = [];
             foreach ($order->getAllItems() as $item) {
                 $product = $this->productRepository->getById($item->getProductId());
@@ -203,15 +203,14 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
                 ],
                 'items' => $_items,
                 'order_id' => $order->getIncrementId(),
-                'shipping_amount' => Util::formatToCents($shippingAmount),
-                'tax_amount'=> Util::formatToCents($taxAmount),
-                'total'=> Util::formatToCents($total)
+                'shipping_amount' => $this->util->formatToCents($shippingAmount),
+                'tax_amount'=> $this->util->formatToCents($taxAmount),
+                'total'=> $this->util->formatToCents($total)
             ];
         } catch (\Exception $e) {
             $this->_logger->debug($e->getMessage());
             return false;
         }
-
         return $data;
     }
 
@@ -273,9 +272,9 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
     protected function getPrivateApiKey($currency_code = null)
     {
         $country_suffix = isset($currency_code) ? $this->getCountrySuffixByCurrency($currency_code) : '';
-        return $this->scopeConfig->getValue('payment/affirm_gateway/mode') == 'sandbox'
-            ? $this->scopeConfig->getValue('payment/affirm_gateway/private_api_key_sandbox' . $country_suffix)
-            : $this->scopeConfig->getValue('payment/affirm_gateway/private_api_key_production' . $country_suffix);
+        return $this->scopeConfig->getValue('payment/affirm_gateway/mode', 'store') == 'sandbox'
+            ? $this->scopeConfig->getValue('payment/affirm_gateway/private_api_key_sandbox' . $country_suffix, 'store')
+            : $this->scopeConfig->getValue('payment/affirm_gateway/private_api_key_production' . $country_suffix, 'store');
     }
 
     /**
@@ -286,9 +285,9 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
     protected function getPublicApiKey($currency_code = null)
     {
         $country_suffix = isset($currency_code) ? $this->getCountrySuffixByCurrency($currency_code) : '';
-        return $this->scopeConfig->getValue('payment/affirm_gateway/mode') == 'sandbox'
-            ? $this->scopeConfig->getValue('payment/affirm_gateway/public_api_key_sandbox' . $country_suffix)
-            : $this->scopeConfig->getValue('payment/affirm_gateway/public_api_key_production' . $country_suffix);
+        return $this->scopeConfig->getValue('payment/affirm_gateway/mode', 'store') == 'sandbox'
+            ? $this->scopeConfig->getValue('payment/affirm_gateway/public_api_key_sandbox' . $country_suffix , 'store')
+            : $this->scopeConfig->getValue('payment/affirm_gateway/public_api_key_production' . $country_suffix, 'store');
     }
 
     /**
@@ -313,6 +312,11 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
             if (isset($countryCode)) {
                 $headers->addHeaderLine('Country-Code', $countryCode);
             }
+
+            \Magento\Framework\App\ObjectManager::getInstance()
+    ->get(\Psr\Log\LoggerInterface::class)->debug($this->getPublicApiKey($currencyCode));
+
+
             if ($requireKeys) {
                 $client->setAuth($this->getPublicApiKey($currencyCode), $this->getPrivateApiKey($currencyCode));
             }

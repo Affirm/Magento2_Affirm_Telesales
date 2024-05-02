@@ -4,9 +4,10 @@ namespace Affirm\Telesales\Model;
 use Magento\Payment\Model\Method\ConfigInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Payment\Block\ConfigurableInfo;
 
 
-class Config implements ConfigInterface
+class Config extends ConfigurableInfo
 {
     const KEY_TELESALES_ACTIVE = 'telesales_active';
 
@@ -23,6 +24,11 @@ class Config implements ConfigInterface
      * @var string
      */
     protected $extensionCode = 'affirm_telesales';
+
+    /**
+     * @var \Magento\Framework\App\Config\ScopeConfigInterface
+     */
+    protected $scopeConfig;
 
     public function __construct(
         ScopeConfigInterface $scopeConfig

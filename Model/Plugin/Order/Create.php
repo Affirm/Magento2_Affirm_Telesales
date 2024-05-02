@@ -16,6 +16,13 @@ class Create
     protected $forwardRedirectFactory;
 
     /**
+     * Result redirect factory
+     *
+     * @var \Affirm\Telesales\Model\Config;
+     */
+    protected $config;
+
+    /**
      * Inject redirect factory
      *
      * @param RedirectFactory $forwardFactory
