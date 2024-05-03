@@ -14,6 +14,7 @@ use Magento\Framework\Module\ResourceInterface;
 use Magento\Framework\Registry;
 use Magento\Sales\Api\Data\OrderStatusHistoryInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
+use Astound\Affirm\Helper\ErrorTracker;
 
 class Index extends Action
 {
@@ -73,6 +74,11 @@ class Index extends Action
      */
     private $affirmConfig;
 
+    /**
+     * @var ErrorTracker
+     */
+    private $errorTracker;
+
 
 
     public function __construct(
@@ -87,7 +93,8 @@ class Index extends Action
         ScopeConfigInterface $scopeConfig,
         ConfigAffirm $configAffirm,
         Checkout $affirmCheckout,
-        \Psr\Log\LoggerInterface $logger
+        \Psr\Log\LoggerInterface $logger,
+        ErrorTracker $errorTracker
     ) {
         $this->resultJsonFactory = $resultJsonFactory;
         $this->_coreRegistry = $coreRegistry;
@@ -100,6 +107,7 @@ class Index extends Action
         $this->affirmConfig = $configAffirm;
         $this->affirmCheckout = $affirmCheckout;
         $this->logger = $logger;
+        $this->errorTracker = $errorTracker;
         parent::__construct($context);
     }
 
@@ -150,6 +158,12 @@ class Index extends Action
                 if ($responseStatus > 200) {
                     $this->logger->debug('Affirm_Telesales__resendCheckout_status_code: ', [$responseStatus]);
                     $this->logger->debug('Affirm_Telesales__resendCheckout_response_body: ', [$responseBody]);
+                    $this->errorTracker->logErrorToAffirm(
+                        transaction_step: 'pre_auth',
+                        error_type: ErrorTracker::TRANSACTION_DECLINED,
+                        error_message: $resendCheckoutResponse->getMessage(),
+                        is_telesales: true
+                    );
                     return $result->setData([
                         'success' => false,
                         'message' => $resendCheckoutResponse->getMessage(),
@@ -163,6 +177,12 @@ class Index extends Action
                 $successMessage = 'Checkout link was re-sent successfully';
             } catch (\Exception $e) {
                 $this->logger->debug($e->getMessage());
+                $this->errorTracker->logErrorToAffirm(
+                    transaction_step: 'pre_auth',
+                    error_type: ErrorTracker::INTERNAL_SERVER_ERROR,
+                    exception: $e,
+                    is_telesales: true
+                );
                 return $result->setData([
                     'success' => false,
                     'message' => "Error",
@@ -194,6 +214,12 @@ class Index extends Action
                     $this->logger->debug('Affirm_Telesales__sendCheckout_status_code: ', [$responseStatus]);
                     $this->logger->debug('Affirm_Telesales__sendCheckout_response_body: ', [$responseBody]);
                     $bodyMessage = $responseBody['message'] && $responseBody['field'] ? "{$responseBody['message']} ({$responseBody['field']})" : "API Error - Affirm checkout could not be processed";
+                    $this->errorTracker->logErrorToAffirm(
+                        transaction_step: 'pre_auth',
+                        error_type: ErrorTracker::TRANSACTION_DECLINED,
+                        error_message: $sendCheckoutResponse->getMessage(),
+                        is_telesales: true
+                    );
                     return $result->setData([
                         'success' => false,
                         'message' => $sendCheckoutResponse->getMessage(),
@@ -210,6 +236,12 @@ class Index extends Action
                 $checkout_token = $responseBody['checkout_id'];
             } catch (\Exception $e) {
                 $this->logger->debug($e->getMessage());
+                $this->errorTracker->logErrorToAffirm(
+                    transaction_step: 'pre_auth',
+                    error_type: ErrorTracker::INTERNAL_SERVER_ERROR,
+                    exception: $e,
+                    is_telesales: true
+                );
                 return $result->setData([
                     'success' => false,
                     'message' => 'API Error - Affirm checkout could not be processed',
@@ -225,6 +257,12 @@ class Index extends Action
                 $payment->setAdditionalInformation('checkout_token', $checkout_token);
                 $payment->save();
             } catch (\Exception $e) {
+                $this->errorTracker->logErrorToAffirm(
+                    transaction_step: 'pre_auth',
+                    error_type: ErrorTracker::INTERNAL_SERVER_ERROR,
+                    exception: $e,
+                    is_telesales: true
+                );
                 $this->logger->debug($e->getMessage());
             }
 
@@ -234,6 +272,12 @@ class Index extends Action
             try {
                 $this->orderRepository->save($order);
             } catch (\Exception $e) {
+                $this->errorTracker->logErrorToAffirm(
+                    transaction_step: 'pre_auth',
+                    error_type: ErrorTracker::INTERNAL_SERVER_ERROR,
+                    exception: $e,
+                    is_telesales: true
+                );
                 $this->logger->debug($e->getMessage());
             }
         }
