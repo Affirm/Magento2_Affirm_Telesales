@@ -313,10 +313,6 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
                 $headers->addHeaderLine('Country-Code', $countryCode);
             }
 
-            \Magento\Framework\App\ObjectManager::getInstance()
-    ->get(\Psr\Log\LoggerInterface::class)->debug($this->getPublicApiKey($currencyCode));
-
-
             if ($requireKeys) {
                 $client->setAuth($this->getPublicApiKey($currencyCode), $this->getPrivateApiKey($currencyCode));
             }
