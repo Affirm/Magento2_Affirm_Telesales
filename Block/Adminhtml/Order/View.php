@@ -265,7 +265,7 @@ class View extends \Magento\Backend\Block\Template
             $this->_logger->debug('Affirm_Telesales__readCheckout_status_code: ', [$responseStatus]);
             $this->_logger->debug('Affirm_Telesales__readCheckout_response_body: ', [$responseBody]);
             $result['checkout_status'] = 'Error';
-            $result['checkout_status_message'] = $readCheckoutResponse->getMessage();
+            $result['checkout_status_message'] = $readCheckoutResponse->getBody();
             $result['checkout_action'] = true;
         } else {
             switch ($checkout_status) {

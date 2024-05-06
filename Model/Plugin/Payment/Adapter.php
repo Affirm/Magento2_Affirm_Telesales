@@ -21,13 +21,21 @@ class Adapter
      */
     protected $_eventPrefix = 'sales_order_payment';
 
+    /**
+     * @var \Magento\Backend\Model\Auth\Session
+     */
+    private $authSession;
+
+    /**
+     * @var \Affirm\Telesales\Model\Config
+     */
+    private $configTelesales;
+
     public function __construct(
         \Affirm\Telesales\Model\Config $config,
         \Magento\Backend\Model\Auth\Session $authSession,
-        \Magento\Framework\ObjectManagerInterface $objectManager
     )
     {
-        $this->objectManager = $objectManager;
         $this->authSession = $authSession;
         $this->configTelesales = $config;
     }

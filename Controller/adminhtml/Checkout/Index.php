@@ -24,9 +24,62 @@ class Index extends Action
     private $resultJsonFactory;
 
     /**
+     * @var Registry
+     */
+    private $_coreRegistry;
+
+    /**
      * @var OrderRepositoryInterface
      */
     private $orderRepository;
+
+
+    /**
+     * @var Client
+     */
+    private $httpClientFactory;
+
+    /**
+     * @var OrderStatusHistoryInterface
+     */
+    private $orderStatusRepository;
+
+    /**
+     * @var ScopeConfigInterface
+     */
+    private $scopeConfig;
+
+    /**
+     * @var ResourceInterface
+     */
+    private $moduleResource;
+
+    /**
+     * @var ProductMetadataInterface
+     */
+    private $productMetadata;
+
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
+    /**
+     * @var Checkout
+     */
+    private $affirmCheckout;
+
+    /**
+     * @var ConfigAffirm
+     */
+    private $affirmConfig;
+
+    /**
+     * @var ErrorTracker
+     */
+    private $errorTracker;
+
+
 
     public function __construct(
         Context $context,
