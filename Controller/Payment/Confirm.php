@@ -24,6 +24,57 @@ class Confirm extends Action implements CsrfAwareActionInterface
      *
      * @param Context                 $context
      */
+
+     /**
+     * @var JsonFactory
+     */
+    private $resultJsonFactory;
+
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
+    /**
+     * @var Checkout
+     */
+    private $affirmCheckout;
+
+    /**
+     * @var ConfigAffirm
+     */
+    private $affirmConfig;
+
+    /**
+     * @var ErrorTracker
+     */
+    private $errorTracker;
+
+    /**
+     * @var Session
+     */
+    private $_checkoutSession;
+
+    /**
+     * @var CartManagementInterface
+     */
+    private $quoteManagement;
+
+    /**
+     * @var OrderFactory
+     */
+    private $orderFactory;
+
+    /**
+     * @var OrderManagement
+     */
+    private $orderManagement;
+
+    /**
+     * @var CartRepositoryInterface
+     */
+    private $quoteRepository;
+
     public function __construct(
         Context $context,
         Session $checkoutSession,
