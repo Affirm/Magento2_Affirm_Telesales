@@ -138,7 +138,8 @@ class Confirm extends Action implements CsrfAwareActionInterface
         $checkout_status = '';
         try {
             $readCheckoutResponse = $this->affirmCheckout->readCheckout($checkout_token, $currency_code);
-            $response_date = $readCheckoutResponse->getHeader('Date') ? $readCheckoutResponse->getHeader('Date')->getFieldValue() : '';
+            $dateHeader = $readCheckoutResponse->getHeaders()->get('Date');
+            $response_date = $dateHeader ? $dateHeader->getFieldValue() : '';
             $this->logger->debug('Affirm Telesales checkout confirm responseBody: ' . $readCheckoutResponse->getBody());
             $responseBody = json_decode($readCheckoutResponse->getBody(), true);
             if (isset($responseBody['checkout_status'])) {
