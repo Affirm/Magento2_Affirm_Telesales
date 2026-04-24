@@ -5,4 +5,4 @@ Affirm Telesales Extension for Magento 2
 **Note**: This module is an add-on of Affirm's Marketplace Module. To use this module, you must have downloaded and installed Affirm's Magento 2 Marketplace Module first.
 
 - [Link to Marketplace](https://marketplace.magento.com/affirm-magento2.html)
-- [Link to Affirm Docs](https://docs.affirm.com/affirm-developers/docs/magento-2-telesales-integration)
+- [Link to Affirm Docs](https://docs.affirm.com/developers/v1.0-Global-Integration/docs/magento-2-telesales-integration)
