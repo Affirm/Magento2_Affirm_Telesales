@@ -300,7 +300,7 @@ class Checkout extends \Magento\Framework\Model\AbstractModel
      * @param string|null $currencyCode
      * @return \Http_Response|null
      */
-    protected function _apiRequestClient($url, $data = null, bool $requireKeys = false, string $method = self::METHOD_POST, string $currencyCode = null)
+    protected function _apiRequestClient($url, $data = null, bool $requireKeys = false, string $method = self::METHOD_POST, ?string $currencyCode = null)
     {
         try {
             $client = $this->httpClientFactory;
