@@ -161,12 +161,12 @@ class Index extends Action
                     $this->errorTracker->logErrorToAffirm(
                         transaction_step: 'pre_auth',
                         error_type: ErrorTracker::TRANSACTION_DECLINED,
-                        error_message: $resendCheckoutResponse->getMessage(),
+                        error_message: $resendCheckoutResponse->getReasonPhrase(),
                         is_telesales: true
                     );
                     return $result->setData([
                         'success' => false,
-                        'message' => $resendCheckoutResponse->getMessage(),
+                        'message' => $resendCheckoutResponse->getReasonPhrase(),
                         'checkout_status' => "Error",
                         'checkout_status_message' => $responseBody['message'] ?: "API Error - Affirm checkout resend could not be processed",
                         'checkout_action' => true
@@ -217,12 +217,12 @@ class Index extends Action
                     $this->errorTracker->logErrorToAffirm(
                         transaction_step: 'pre_auth',
                         error_type: ErrorTracker::TRANSACTION_DECLINED,
-                        error_message: $sendCheckoutResponse->getMessage(),
+                        error_message: $sendCheckoutResponse->getReasonPhrase(),
                         is_telesales: true
                     );
                     return $result->setData([
                         'success' => false,
-                        'message' => $sendCheckoutResponse->getMessage(),
+                        'message' => $sendCheckoutResponse->getReasonPhrase(),
                         'checkout_status' => "Error",
                         'checkout_status_message' => $bodyMessage,
                         'checkout_action' => true
